@@ -8,13 +8,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "setup-check": "echo '🔍 Verifying CSS setup...' && test -f postcss.config.js && test -f tailwind.config.js && test -f src/index.css && npx tailwindcss --help > /dev/null && echo '✅ CSS configuration is properly set up!' || echo '❌ CSS setup issue detected. Ensure config files exist and run: npm install'"
   },
   "dependencies": {
     "@types/react-router-dom": "^5.3.3",
-    "autoprefixer": "^10.4.21",
     "lucide-react": "^0.544.0",
-    "postcss": "^8.5.6",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.1",
@@ -25,10 +24,12 @@
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
     "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.4.21",
     "eslint": "^9.33.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
+    "postcss": "^8.5.6",
     "tailwindcss": "^3.4.14",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.39.1",

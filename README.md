@@ -63,6 +63,12 @@ cd firebolt-merge-demo
 npm install
 ```
 
+### 1.5. Verify CSS Setup (Recommended)
+```bash
+npm run setup-check
+```
+This ensures Tailwind CSS and PostCSS are properly configured to prevent UI layout issues.
+
 ### 2. Start Development Server
 ```bash
 npm run dev
@@ -92,6 +98,7 @@ Navigate to `http://localhost:5173` and click on **Customer Analytics MERGE**
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
+- `npm run setup-check` - Verify CSS tools are properly installed
 
 ## 📊 What You'll See
 
@@ -138,6 +145,36 @@ server: {
   }
 }
 ```
+
+## 🔧 Troubleshooting
+
+### CSS/UI Issues (Elements Anchored to Left)
+
+If UI elements appear unstyled or anchored to the left side of the screen:
+
+1. **Verify CSS Tools Installation:**
+   ```bash
+   npm run setup-check
+   ```
+
+2. **Check Required Files Exist:**
+   - `postcss.config.js` - PostCSS configuration
+   - `tailwind.config.js` - Tailwind CSS configuration  
+   - `src/index.css` - Contains `@tailwind` directives
+
+3. **Reinstall Dependencies:**
+   ```bash
+   rm -rf node_modules package-lock.json
+   npm install
+   ```
+
+4. **Restart Development Server:**
+   ```bash
+   # Kill existing server (Ctrl+C) then:
+   npm run dev
+   ```
+
+**Root Cause:** This issue occurs when Tailwind CSS fails to process properly, usually due to missing PostCSS configuration or incorrect dependency installation.
 
 ## 📝 Version History
 

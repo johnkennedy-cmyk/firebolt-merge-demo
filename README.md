@@ -1,69 +1,138 @@
-# React + TypeScript + Vite
+# Firebolt MERGE Demo
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> **Interactive demonstration of Firebolt's MERGE operations performance vs traditional database approaches**
 
-Currently, two official plugins are available:
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](./VERSION.md)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](#)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 Overview
 
-## Expanding the ESLint configuration
+This demo application showcases the performance benefits of **Firebolt's MERGE operations** compared to traditional INSERT/UPDATE/DELETE approaches through real-time testing against a local Firebolt Core instance.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### ✨ Key Features
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **📊 Live Performance Testing** - Real-time comparison of MERGE vs Traditional approaches
+- **💻 Dual View Interface** - Toggle between Performance Results and SQL Query Comparison
+- **🔗 Real Firebolt Integration** - Direct connection to local Firebolt Core instance
+- **📈 Interactive Charts** - Execution time comparisons and performance metrics
+- **📝 Detailed Logging** - Step-by-step execution logs with timestamps
+- **⚖️ Scalable Testing** - Multiple data scales (1x, 3x, 9x) for comprehensive testing
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+## 🏗️ Technical Stack
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- **Frontend**: React 19 + TypeScript + Tailwind CSS
+- **Build Tool**: Vite with HMR
+- **Charts**: Recharts for data visualizations
+- **Database**: Firebolt Core (localhost:3473)
+- **Data**: 5,000+ customer records for realistic testing
+
+## 🎯 Demo Scenario
+
+**Customer Analytics MERGE Performance**
+- Realistic e-commerce customer segmentation scenario
+- MERGE approach: Single comprehensive operation
+- Traditional approach: 5 separate DELETE/UPDATE/INSERT operations
+- Real-time performance metrics and SQL query comparison
+
+## 📋 Prerequisites
+
+- **Firebolt Core** running on `localhost:3473`
+- **Node.js** v16+ with npm
+- **Database** pre-populated with ecommerce dataset
+- **Tables**: `customer_profiles`, `customer_changes`, `ecommerce`
+
+## 🚀 Quick Start
+
+### 1. Clone and Install
+```bash
+git clone <repository-url>
+cd firebolt-merge-demo
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 2. Start Development Server
+```bash
+npm run dev
 ```
+
+### 3. Open Demo
+Navigate to `http://localhost:5173` and click on **Customer Analytics MERGE**
+
+### 4. Run Performance Tests
+1. Choose data scale (1x, 3x, or 9x)
+2. Click "Start Performance Test"
+3. Watch real-time execution logs
+4. Toggle between Performance Results and SQL Query views
+
+## 🎛️ Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
+
+## 📊 What You'll See
+
+### Performance Results View
+- **Metrics Cards**: Time improvement, efficiency gains, I/O reduction
+- **Execution Charts**: Visual comparison of MERGE vs Traditional timing
+- **Results Table**: Detailed breakdown of all performance metrics
+- **Real-time Logs**: Step-by-step execution with emoji indicators
+
+### SQL Query Comparison View  
+- **Side-by-side SQL**: Actual MERGE vs Traditional queries
+- **Syntax Highlighting**: Color-coded for easy reading
+- **Educational Content**: Benefits comparison and technical insights
+- **Operation Breakdown**: See exactly what each approach executes
+
+## 🏆 Performance Benefits Demonstrated
+
+- **🚀 Single Operation**: MERGE vs 5 traditional operations
+- **🔒 Atomic Transactions**: Better concurrency and data consistency  
+- **📉 Reduced I/O**: Lower resource consumption
+- **🧩 Simplified Logic**: Easier to understand and maintain
+- **⚡ Better Performance**: Measurable execution time improvements
+
+## 🎨 UI Features
+
+- **Responsive Design**: Works on desktop and mobile
+- **Firebolt Branding**: Orange and blue color scheme
+- **Interactive Elements**: Hover states and smooth transitions
+- **Loading States**: Progress indicators during test execution
+- **Error Handling**: Graceful error display and recovery
+
+## 🔧 Configuration
+
+The app connects to Firebolt Core via a Vite proxy configured in `vite.config.ts`:
+
+```typescript
+server: {
+  proxy: {
+    '/api/firebolt': {
+      target: 'http://localhost:3473',
+      changeOrigin: true,
+      rewrite: (path) => path.replace(/^\/api\/firebolt/, ''),
+    }
+  }
+}
+```
+
+## 📝 Version History
+
+See [VERSION.md](./VERSION.md) for detailed release notes.
+
+## 🤝 Contributing
+
+This is a demonstration project. For production use cases, consider:
+- Adding authentication for multi-user environments
+- Implementing data export capabilities
+- Adding more complex MERGE scenarios
+- Extending to other Firebolt features
+
+## 📄 License
+
+MIT License - See LICENSE file for details.
+
+---
+
+**Built with ❤️ to showcase Firebolt's MERGE capabilities**

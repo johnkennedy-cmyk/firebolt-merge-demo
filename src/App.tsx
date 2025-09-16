@@ -1,5 +1,5 @@
 /**
- * Firebolt MERGE Master Demo Application
+ * Firebolt MERGE Demo Application
  * Version: 1.0.0
  * 
  * Interactive demonstration of Firebolt's MERGE operations performance

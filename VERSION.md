@@ -1,4 +1,4 @@
-# Firebolt MERGE Master - Version History
+# Firebolt MERGE Demo - Version History
 
 ## Version 1.0.0 (2024-09-16)
 

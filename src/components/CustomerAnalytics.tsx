@@ -1,5 +1,5 @@
 /**
- * Firebolt MERGE Master - Customer Analytics Performance Demo
+ * Firebolt MERGE Demo - Customer Analytics Performance Demo
  * Version: 1.0.0
  * 
  * This component demonstrates the performance benefits of Firebolt's MERGE operations

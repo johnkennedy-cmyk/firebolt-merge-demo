@@ -1,5 +1,5 @@
 {
-  "name": "firebolt-merge-master",
+  "name": "firebolt-merge-demo",
   "private": true,
   "version": "1.0.0",
   "description": "Interactive demonstration of Firebolt's MERGE operations performance vs traditional database approaches",

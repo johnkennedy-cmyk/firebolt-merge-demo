@@ -74,10 +74,10 @@ const Dashboard = () => {
       </div>
 
       {/* Connection Status */}
-      <div className="mb-8 p-4 bg-white rounded-lg shadow border-l-4 border-firebolt-orange">
+      <div className="mb-8 p-4 bg-white rounded-lg shadow border-l-4 border-firebolt-red">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <Zap className="w-5 h-5 text-firebolt-orange mr-2" />
+            <Zap className="w-5 h-5 text-firebolt-red mr-2" />
             <span className="text-sm font-medium text-gray-900">
               Connection Status: 
               <span className="ml-2 text-green-600">Connected to Firebolt Core (localhost:3473)</span>
@@ -85,7 +85,7 @@ const Dashboard = () => {
           </div>
           <Link 
             to="/setup" 
-            className="text-firebolt-blue hover:text-firebolt-orange text-sm font-medium"
+            className="text-firebolt-accent hover:text-firebolt-red-bright text-sm font-medium"
           >
             Configure →
           </Link>
@@ -144,13 +144,13 @@ const Dashboard = () => {
                   <demo.icon className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 group-hover:text-firebolt-blue">
+                  <h3 className="text-lg font-semibold text-gray-900 group-hover:text-firebolt-accent">
                     {demo.title}
                   </h3>
                   <p className="text-sm text-gray-500">{demo.estimated}</p>
                 </div>
               </div>
-              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-firebolt-orange" />
+              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-firebolt-red-bright" />
             </div>
             <p className="text-gray-600">{demo.description}</p>
           </Link>

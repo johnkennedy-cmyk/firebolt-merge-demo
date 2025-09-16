@@ -73,6 +73,7 @@ This ensures Tailwind CSS and PostCSS are properly configured to prevent UI layo
 ```bash
 npm run dev
 ```
+*Note: This automatically clears Vite cache to prevent CSS issues*
 
 ### 3. Open Demo
 Navigate to `http://localhost:5173` and click on **Customer Analytics MERGE**
@@ -94,7 +95,9 @@ Navigate to `http://localhost:5173` and click on **Customer Analytics MERGE**
 
 ## 🎛️ Available Scripts
 
-- `npm run dev` - Start development server
+- `npm run dev` - Start development server (auto-clears cache)
+- `npm run dev:clean` - Explicitly clear cache and start server  
+- `npm run dev:direct` - Start server without cache clearing
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
@@ -150,31 +153,33 @@ server: {
 
 ### CSS/UI Issues (Elements Anchored to Left)
 
-If UI elements appear unstyled or anchored to the left side of the screen:
+**✅ Auto-Prevention:** The `npm run dev` command now automatically clears Vite cache to prevent this issue.
+
+If UI elements still appear unstyled or anchored to the left side of the screen:
 
 1. **Verify CSS Tools Installation:**
    ```bash
    npm run setup-check
    ```
 
-2. **Check Required Files Exist:**
+2. **Force Cache Clear and Restart:**
+   ```bash
+   npm run dev:clean
+   ```
+
+3. **Check Required Files Exist:**
    - `postcss.config.js` - PostCSS configuration
    - `tailwind.config.js` - Tailwind CSS configuration  
    - `src/index.css` - Contains `@tailwind` directives
 
-3. **Reinstall Dependencies:**
+4. **Nuclear Option - Full Reinstall:**
    ```bash
-   rm -rf node_modules package-lock.json
+   rm -rf node_modules package-lock.json .vite
    npm install
-   ```
-
-4. **Restart Development Server:**
-   ```bash
-   # Kill existing server (Ctrl+C) then:
    npm run dev
    ```
 
-**Root Cause:** This issue occurs when Tailwind CSS fails to process properly, usually due to missing PostCSS configuration or incorrect dependency installation.
+**Root Cause:** This issue occurs when Tailwind CSS fails to process properly, usually due to Vite cache conflicts or missing PostCSS configuration.
 
 ## 📝 Version History
 

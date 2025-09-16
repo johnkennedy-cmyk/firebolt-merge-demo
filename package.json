@@ -5,7 +5,9 @@
   "description": "Interactive demonstration of Firebolt's MERGE operations performance vs traditional database approaches",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run dev:clean",
+    "dev:clean": "echo '🧹 Clearing Vite cache...' && rm -rf .vite node_modules/.vite && echo '✅ Cache cleared!' && vite",
+    "dev:direct": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",

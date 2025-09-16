@@ -11,13 +11,13 @@ const Navigation = () => {
   ];
 
   return (
-    <nav className="bg-white shadow-sm border-b">
+    <nav className="bg-gradient-to-r from-white to-firebolt-light-gray shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
-            <Database className="w-8 h-8 text-firebolt-orange mr-3" />
-            <span className="text-2xl font-bold text-gray-900">
-              Firebolt <span className="text-firebolt-orange">MERGE Master</span>
+            <Database className="w-8 h-8 text-firebolt-red mr-3" />
+            <span className="text-2xl font-bold text-firebolt-dark">
+              Firebolt <span className="text-firebolt-red">MERGE</span> <span className="text-firebolt-gray">Demo</span>
             </span>
           </div>
           
@@ -28,8 +28,8 @@ const Navigation = () => {
                 to={path}
                 className={`flex items-center px-3 py-2 rounded-lg transition-colors duration-200 ${
                   location.pathname === path
-                    ? 'bg-firebolt-blue text-white'
-                    : 'text-gray-600 hover:text-firebolt-blue hover:bg-blue-50'
+                    ? 'bg-firebolt-red text-white'
+                    : 'text-firebolt-gray hover:text-firebolt-red-bright hover:bg-firebolt-light-gray'
                 }`}
               >
                 <Icon className="w-4 h-4 mr-2" />

@@ -751,9 +751,9 @@ const CustomerAnalytics = () => {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center">
-          <Users className="w-8 h-8 text-firebolt-orange mr-3" />
+          <Users className="w-8 h-8 text-firebolt-red mr-3" />
           Customer Analytics MERGE Performance
-          <span className="ml-3 px-2 py-1 text-sm bg-firebolt-orange text-white rounded-full">v1.0</span>
+          <span className="ml-3 px-2 py-1 text-sm bg-firebolt-red text-white rounded-full">v1.0</span>
         </h1>
         <p className="text-gray-600">
           Interactive performance comparison between MERGE and traditional INSERT/UPDATE approaches
@@ -974,7 +974,7 @@ const CustomerAnalytics = () => {
       {comparison && (
         <div>
           {/* MERGE vs Traditional Comparison Header */}
-          <div className="bg-gradient-to-r from-firebolt-orange to-firebolt-blue rounded-lg shadow p-6 mb-8 text-white">
+          <div className="bg-gradient-to-r from-firebolt-red to-firebolt-blue rounded-lg shadow p-6 mb-8 text-white">
             <h2 className="text-2xl font-bold mb-2">MERGE vs Traditional Approach Results</h2>
             <p className="text-white/90">
               Comparing single MERGE operation against 5 traditional SQL operations
@@ -1023,7 +1023,7 @@ const CustomerAnalytics = () => {
                 </p>
                 <p className="text-xs text-gray-500">Bytes scanned</p>
               </div>
-              <Zap className="w-8 h-8 text-firebolt-orange" />
+              <Zap className="w-8 h-8 text-firebolt-red" />
             </div>
           </div>
 
@@ -1052,7 +1052,7 @@ const CustomerAnalytics = () => {
                 onClick={() => setShowSQLComparison(false)}
                 className={`py-3 px-6 text-sm font-medium border-b-2 ${
                   !showSQLComparison
-                    ? 'border-firebolt-orange text-firebolt-orange'
+                    ? 'border-firebolt-red text-firebolt-red'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -1062,7 +1062,7 @@ const CustomerAnalytics = () => {
                 onClick={() => setShowSQLComparison(true)}
                 className={`py-3 px-6 text-sm font-medium border-b-2 ${
                   showSQLComparison
-                    ? 'border-firebolt-orange text-firebolt-orange'
+                    ? 'border-firebolt-red text-firebolt-red'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -1078,8 +1078,8 @@ const CustomerAnalytics = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
           {/* MERGE Query */}
-          <div className="border border-firebolt-orange rounded-lg">
-            <div className="bg-firebolt-orange text-white px-4 py-2 rounded-t-lg">
+          <div className="border border-firebolt-red rounded-lg">
+            <div className="bg-firebolt-red text-white px-4 py-2 rounded-t-lg">
               <h4 className="font-semibold">🚀 MERGE Approach (1 Operation)</h4>
             </div>
             <div className="p-4">
@@ -1212,7 +1212,7 @@ WHERE target.customer_id IS NULL;`}
           <h4 className="font-semibold text-gray-900 mb-2">Key Differences</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="font-semibold text-firebolt-orange">MERGE Benefits:</span>
+              <span className="font-semibold text-firebolt-red">MERGE Benefits:</span>
               <ul className="list-disc list-inside text-gray-600 mt-1">
                 <li>Single atomic operation</li>
                 <li>Better performance & concurrency</li>
@@ -1304,7 +1304,7 @@ WHERE target.customer_id IS NULL;`}
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                                 result.approach === 'MERGE' 
-                                  ? 'bg-firebolt-orange text-white' 
+                                  ? 'bg-firebolt-red text-white' 
                                   : 'bg-gray-200 text-gray-800'
                               }`}>
                                 {result.approach === 'MERGE' ? 'MERGE' : 'INSERT/UPDATE'}

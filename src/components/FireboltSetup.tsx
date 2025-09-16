@@ -77,7 +77,7 @@ const FireboltSetup = () => {
         {/* Configuration Panel */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center mb-6">
-            <Settings className="w-6 h-6 text-firebolt-orange mr-3" />
+            <Settings className="w-6 h-6 text-firebolt-red mr-3" />
             <h2 className="text-xl font-semibold text-gray-900">Connection Configuration</h2>
           </div>
 

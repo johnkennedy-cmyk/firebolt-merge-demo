@@ -5,6 +5,12 @@
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](./VERSION.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#)
 
+## ⚠️ **Important Security Notice**
+
+**v1.0.0 Scope**: This release has been developed exclusively for **insecure connections to locally running Firebolt Core instances**. It connects to [Firebolt Core](https://www.firebolt.io/core) - the free, self-hosted analytical query engine that runs anywhere via Docker.
+
+**Future Development**: Secure connection capabilities to Firebolt.io cloud services may be included in future releases.
+
 ## 🚀 Overview
 
 This demo application showcases the performance benefits of **Firebolt's MERGE operations** compared to traditional INSERT/UPDATE/DELETE approaches through real-time testing against a local Firebolt Core instance.
@@ -39,9 +45,13 @@ This demo application showcases the performance benefits of **Firebolt's MERGE o
 
 ## 📋 Prerequisites
 
-- **Firebolt Core** running on `localhost:3473`
+- **[Firebolt Core](https://www.firebolt.io/core)** running locally on `localhost:3473`
+  ```bash
+  # Quick install via Docker
+  bash <(curl -s https://get-core.firebolt.io/)
+  ```
 - **Node.js** v16+ with npm
-- **Database** pre-populated with ecommerce dataset
+- **Database** pre-populated with ecommerce dataset  
 - **Tables**: `customer_profiles`, `customer_changes`, `ecommerce`
 
 ## 🚀 Quick Start

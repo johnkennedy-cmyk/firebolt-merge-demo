@@ -17,7 +17,7 @@
  * @date 2024-09-16
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Users,
   Play,
@@ -60,13 +60,26 @@ const CustomerAnalytics = () => {
   const [currentTest, setCurrentTest] = useState<string>('');
   const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetric[]>([]);
   const [comparison, setComparison] = useState<ComparisonMetrics | null>(null);
-  const [dataScale, setDataScale] = useState<'1x' | '3x' | '9x'>('1x');
+  const [dataScale, setDataScale] = useState<'1x' | '3x' | '5x' | '10x' | '25x' | '50x'>('1x');
   const [logs, setLogs] = useState<string[]>([]);
   const [showSQLComparison, setShowSQLComparison] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+  const [isResettingDatabase, setIsResettingDatabase] = useState(false);
+  const [databaseStatus, setDatabaseStatus] = useState<{customerProfiles: number, customerChanges: number} | null>(null);
 
   const addLog = useCallback((message: string) => {
     const timestamp = new Date().toLocaleTimeString();
     setLogs(prev => [...prev, `[${timestamp}] ${message}`]);
+  }, []);
+
+  const formatBytes = useCallback((bytes: number): string => {
+    if (bytes >= 1024 * 1024) {
+      return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+    } else if (bytes >= 1024) {
+      return `${(bytes / 1024).toFixed(1)} KB`;
+    } else {
+      return `${bytes.toLocaleString()} bytes`;
+    }
   }, []);
 
   const executeFireboltQuery = async (query: string): Promise<any> => {
@@ -105,9 +118,21 @@ const CustomerAnalytics = () => {
     }
   };
 
-  const setupTestData = async (scale: '1x' | '3x' | '9x') => {
-    const multiplier = scale === '1x' ? 1 : scale === '3x' ? 3 : 9;
-    const baseRows = Math.min(5000, 5000 * multiplier); // Simplified for demo
+  const setupTestData = async (scale: '1x' | '3x' | '5x' | '10x' | '25x' | '50x') => {
+    const getMultiplier = (scale: string): number => {
+      switch (scale) {
+        case '1x': return 1;
+        case '3x': return 3;
+        case '5x': return 5;
+        case '10x': return 10;
+        case '25x': return 25;
+        case '50x': return 50;
+        default: return 1;
+      }
+    };
+    
+    const multiplier = getMultiplier(scale);
+    const baseRows = 1000 * multiplier; // Properly scale the data
     const changesRows = Math.floor(baseRows * 0.3);
 
     addLog(`Setting up ${scale} test data (${baseRows.toLocaleString()} customers)...`);
@@ -115,10 +140,11 @@ const CustomerAnalytics = () => {
     // Clean existing change data
     await executeFireboltQuery('DELETE FROM customer_changes;');
 
-    // Generate simple test changes
+    // Generate simple test changes (ensure no duplicates)
     const changesQuery = `
-      INSERT INTO customer_changes (customer_id, email, full_name, subscription_tier, monthly_spend, last_activity_date, status, change_source)
-      SELECT 
+      INSERT INTO customer_changes (change_id, customer_id, email, full_name, subscription_tier, monthly_spend, last_activity_date, status, change_source, created_at)
+      SELECT DISTINCT
+          customer_id as change_id,
           customer_id,
           'updated' || customer_id || '@example.com' as email,
           'Updated Customer ' || customer_id as full_name,
@@ -128,9 +154,10 @@ const CustomerAnalytics = () => {
               ELSE subscription_tier
           END as subscription_tier,
           monthly_spend + 25.0 as monthly_spend,
-          CURRENT_TIMESTAMP as last_activity_date,
+          CURRENT_TIMESTAMP() as last_activity_date,
           CASE WHEN customer_id % 50 = 0 THEN 'deleted' ELSE 'active' END as status,
-          'crm' as change_source
+          'crm' as change_source,
+          CURRENT_TIMESTAMP() as created_at
       FROM customer_profiles 
       WHERE customer_id <= ${changesRows}
     `;
@@ -138,6 +165,73 @@ const CustomerAnalytics = () => {
     await executeFireboltQuery(changesQuery);
 
     addLog(`✅ Test data setup complete: ${baseRows.toLocaleString()} customers with ${changesRows.toLocaleString()} changes`);
+    await checkDatabaseStatus();
+  };
+
+  const loadAdditionalData = async (customerCount: number) => {
+    if (isLoadingData) return;
+    
+    setIsLoadingData(true);
+    
+    try {
+      addLog(`🔄 Loading ${customerCount.toLocaleString()} additional customers into database...`);
+      
+      // Get the current max customer_id to avoid conflicts
+      const maxIdResult = await executeFireboltQuery(`
+        SELECT COALESCE(MAX(customer_id), 0) as max_id FROM customer_profiles;
+      `);
+      
+      const startId = (maxIdResult.data?.[0]?.max_id || 0) + 1;
+      
+      // Insert additional customer profiles in batches
+      const batchSize = 1000;
+      const batches = Math.ceil(customerCount / batchSize);
+      
+      for (let batch = 0; batch < batches; batch++) {
+        const batchStartId = startId + (batch * batchSize);
+        const batchEndId = Math.min(batchStartId + batchSize - 1, startId + customerCount - 1);
+        const batchCustomerCount = batchEndId - batchStartId + 1;
+        
+        addLog(`  📦 Loading batch ${batch + 1}/${batches} (${batchCustomerCount} customers)...`);
+        
+        // Generate data using a simpler approach
+        const values = [];
+        for (let i = 0; i < batchCustomerCount; i++) {
+          const custId = batchStartId + i;
+          const spend = (custId % 500) + 10.0;
+          const tier = custId % 20 === 0 ? 'enterprise' : (custId % 10 === 0 ? 'premium' : 'basic');
+          const segment = custId % 20 === 0 ? 'high_value' : (spend >= 100 ? 'medium_value' : 'standard');
+          
+          // Use proper Firebolt date arithmetic
+          const daysAgo = custId % 365;
+          values.push(`(${custId}, 'customer${custId}@example.com', 'Customer ${custId}', DATE_ADD(DAY, -${daysAgo}, CURRENT_DATE()), '${tier}', ${spend}, CURRENT_TIMESTAMP(), 'active', '${segment}', CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())`);
+        }
+        
+        await executeFireboltQuery(`
+          INSERT INTO customer_profiles (
+            customer_id, email, full_name, signup_date, subscription_tier, 
+            monthly_spend, last_activity_date, status, customer_segment, created_at, updated_at
+          )
+          VALUES ${values.join(', ')};
+        `);
+      }
+      
+      // Get updated total count
+      const countResult = await executeFireboltQuery(`
+        SELECT COUNT(*) as total_customers FROM customer_profiles;
+      `);
+      
+      const totalCustomers = countResult.data?.[0]?.total_customers || 0;
+      addLog(`✅ Successfully loaded ${customerCount.toLocaleString()} additional customers`);
+      addLog(`📊 Database now contains ${totalCustomers.toLocaleString()} total customers`);
+      await checkDatabaseStatus();
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      addLog(`❌ Failed to load additional data: ${errorMessage}`);
+    } finally {
+      setIsLoadingData(false);
+    }
   };
 
   const runMergeTest = async (): Promise<TestResult> => {
@@ -160,7 +254,7 @@ const CustomerAnalytics = () => {
                   WHEN source.monthly_spend >= 25.00 THEN 'medium_value'
                   ELSE 'standard'
               END,
-              updated_at = CURRENT_TIMESTAMP
+              updated_at = CURRENT_TIMESTAMP()
       WHEN NOT MATCHED THEN
           INSERT (customer_id, email, full_name, subscription_tier, monthly_spend, status, customer_segment)
           VALUES (source.customer_id, source.email, source.full_name, source.subscription_tier, source.monthly_spend, source.status,
@@ -174,7 +268,7 @@ const CustomerAnalytics = () => {
     const executionTime = (Date.now() - startTime) / 1000;
     
     addLog(`✅ MERGE COMPLETED in ${executionTime}s - Single operation handled all changes!`);
-    addLog(`📊 MERGE Results: ${result.statistics?.rows_read || 0} rows processed, ${(result.statistics?.bytes_read || 0) / 1024 / 1024} MB scanned`);
+    addLog(`📊 MERGE Results: ${result.statistics?.rows_read || 0} rows processed, ${formatBytes(result.statistics?.bytes_read || 0)} scanned`);
     
     return {
       testName: `MERGE Test (${dataScale})`,
@@ -194,6 +288,9 @@ const CustomerAnalytics = () => {
     const startTime = Date.now();
     let totalRowsProcessed = 0;
     let totalBytesScanned = 0;
+    
+    // Estimate bytes per row for traditional operations when statistics don't provide bytes_read
+    const estimatedBytesPerRow = 256;
 
     // Step 1: Delete
     addLog('  1/5 Deleting marked customers...');
@@ -205,63 +302,102 @@ const CustomerAnalytics = () => {
           WHERE source.status = 'deleted'
       );
     `);
-    totalRowsProcessed += deleteResult.statistics?.rows_read || 0;
-    totalBytesScanned += deleteResult.statistics?.bytes_read || 0;
+    
+    // Debug log to see what statistics are returned
+    addLog(`  📊 Delete stats: ${JSON.stringify(deleteResult.statistics || {})}`);
+    
+    const deleteRows = deleteResult.statistics?.rows_read || 0;
+    const deleteBytesFromStats = deleteResult.statistics?.bytes_read || 0;
+    const deleteBytesEstimated = deleteRows * estimatedBytesPerRow;
+    const deleteBytesScanned = deleteBytesFromStats || deleteBytesEstimated;
+    
+    addLog(`  🔍 Delete: ${deleteRows} rows, ${deleteBytesFromStats} bytes from stats, ${deleteBytesEstimated} estimated bytes, ${deleteBytesScanned} final bytes`);
+    
+    totalRowsProcessed += deleteRows;
+    totalBytesScanned += deleteBytesScanned;
 
     // Step 2: Update Enterprise
     addLog('  2/5 Updating enterprise customers...');
     const updateEnterpriseResult = await executeFireboltQuery(`
       UPDATE customer_profiles AS target
       SET
-          subscription_tier = (SELECT subscription_tier FROM customer_changes WHERE customer_id = target.customer_id),
-          monthly_spend = (SELECT monthly_spend FROM customer_changes WHERE customer_id = target.customer_id),
+          subscription_tier = source.subscription_tier,
+          monthly_spend = source.monthly_spend,
           customer_segment = 'high_value',
-          updated_at = CURRENT_TIMESTAMP
-      WHERE target.customer_id IN (
-          SELECT customer_id FROM customer_changes WHERE subscription_tier = 'enterprise'
-      );
+          updated_at = CURRENT_TIMESTAMP()
+      FROM (
+          SELECT DISTINCT customer_id, subscription_tier, monthly_spend
+          FROM customer_changes 
+          WHERE subscription_tier = 'enterprise'
+      ) AS source
+      WHERE target.customer_id = source.customer_id;
     `);
-    totalRowsProcessed += updateEnterpriseResult.statistics?.rows_read || 0;
-    totalBytesScanned += updateEnterpriseResult.statistics?.bytes_read || 0;
+    const enterpriseRows = updateEnterpriseResult.statistics?.rows_read || 0;
+    const enterpriseBytesFromStats = updateEnterpriseResult.statistics?.bytes_read || 0;
+    const enterpriseBytesEstimated = enterpriseRows * estimatedBytesPerRow;
+    const enterpriseBytesScanned = enterpriseBytesFromStats || enterpriseBytesEstimated;
+    
+    addLog(`  🔍 Enterprise: ${enterpriseRows} rows, ${enterpriseBytesFromStats} bytes from stats, ${enterpriseBytesEstimated} estimated, ${enterpriseBytesScanned} final`);
+    
+    totalRowsProcessed += enterpriseRows;
+    totalBytesScanned += enterpriseBytesScanned;
 
     // Step 3: Update Medium Value
     addLog('  3/5 Updating medium value customers...');
     const updateMediumResult = await executeFireboltQuery(`
       UPDATE customer_profiles AS target
       SET
-          subscription_tier = (SELECT subscription_tier FROM customer_changes WHERE customer_id = target.customer_id),
-          monthly_spend = (SELECT monthly_spend FROM customer_changes WHERE customer_id = target.customer_id),
+          subscription_tier = source.subscription_tier,
+          monthly_spend = source.monthly_spend,
           customer_segment = 'medium_value',
-          updated_at = CURRENT_TIMESTAMP
-      WHERE target.customer_id IN (
-          SELECT customer_id FROM customer_changes 
+          updated_at = CURRENT_TIMESTAMP()
+      FROM (
+          SELECT DISTINCT customer_id, subscription_tier, monthly_spend
+          FROM customer_changes 
           WHERE monthly_spend >= 25.00 AND subscription_tier != 'enterprise'
-      );
+      ) AS source
+      WHERE target.customer_id = source.customer_id;
     `);
-    totalRowsProcessed += updateMediumResult.statistics?.rows_read || 0;
-    totalBytesScanned += updateMediumResult.statistics?.bytes_read || 0;
+    const mediumRows = updateMediumResult.statistics?.rows_read || 0;
+    const mediumBytesFromStats = updateMediumResult.statistics?.bytes_read || 0;
+    const mediumBytesEstimated = mediumRows * estimatedBytesPerRow;
+    const mediumBytesScanned = mediumBytesFromStats || mediumBytesEstimated;
+    
+    addLog(`  🔍 Medium: ${mediumRows} rows, ${mediumBytesFromStats} bytes from stats, ${mediumBytesEstimated} estimated, ${mediumBytesScanned} final`);
+    
+    totalRowsProcessed += mediumRows;
+    totalBytesScanned += mediumBytesScanned;
 
     // Step 4: Update Remaining
     addLog('  4/5 Updating remaining customers...');
     const updateRemainingResult = await executeFireboltQuery(`
       UPDATE customer_profiles AS target
       SET
-          email = COALESCE((SELECT email FROM customer_changes WHERE customer_id = target.customer_id), target.email),
-          full_name = COALESCE((SELECT full_name FROM customer_changes WHERE customer_id = target.customer_id), target.full_name),
-          subscription_tier = COALESCE((SELECT subscription_tier FROM customer_changes WHERE customer_id = target.customer_id), target.subscription_tier),
-          monthly_spend = COALESCE((SELECT monthly_spend FROM customer_changes WHERE customer_id = target.customer_id), target.monthly_spend),
-          last_activity_date = COALESCE((SELECT last_activity_date FROM customer_changes WHERE customer_id = target.customer_id), target.last_activity_date),
-          status = COALESCE((SELECT status FROM customer_changes WHERE customer_id = target.customer_id), target.status),
-          updated_at = CURRENT_TIMESTAMP
-      WHERE target.customer_id IN (
-          SELECT customer_id FROM customer_changes 
+          email = COALESCE(source.email, target.email),
+          full_name = COALESCE(source.full_name, target.full_name),
+          subscription_tier = COALESCE(source.subscription_tier, target.subscription_tier),
+          monthly_spend = COALESCE(source.monthly_spend, target.monthly_spend),
+          last_activity_date = COALESCE(source.last_activity_date, target.last_activity_date),
+          status = COALESCE(source.status, target.status),
+          updated_at = CURRENT_TIMESTAMP()
+      FROM (
+          SELECT DISTINCT customer_id, email, full_name, subscription_tier, monthly_spend, last_activity_date, status
+          FROM customer_changes 
           WHERE status != 'deleted' 
             AND subscription_tier != 'enterprise'
             AND NOT (monthly_spend >= 25.00 AND subscription_tier IS NOT NULL)
-      );
+      ) AS source
+      WHERE target.customer_id = source.customer_id;
     `);
-    totalRowsProcessed += updateRemainingResult.statistics?.rows_read || 0;
-    totalBytesScanned += updateRemainingResult.statistics?.bytes_read || 0;
+    const remainingRows = updateRemainingResult.statistics?.rows_read || 0;
+    const remainingBytesFromStats = updateRemainingResult.statistics?.bytes_read || 0;
+    const remainingBytesEstimated = remainingRows * estimatedBytesPerRow;
+    const remainingBytesScanned = remainingBytesFromStats || remainingBytesEstimated;
+    
+    addLog(`  🔍 Remaining: ${remainingRows} rows, ${remainingBytesFromStats} bytes from stats, ${remainingBytesEstimated} estimated, ${remainingBytesScanned} final`);
+    
+    totalRowsProcessed += remainingRows;
+    totalBytesScanned += remainingBytesScanned;
 
     // Step 5: Insert New
     addLog('  5/5 Inserting new customers...');
@@ -286,13 +422,20 @@ const CustomerAnalytics = () => {
           ON source.customer_id = target.customer_id
       WHERE target.customer_id IS NULL;
     `);
-    totalRowsProcessed += insertResult.statistics?.rows_read || 0;
-    totalBytesScanned += insertResult.statistics?.bytes_read || 0;
+    const insertRows = insertResult.statistics?.rows_read || 0;
+    const insertBytesFromStats = insertResult.statistics?.bytes_read || 0;
+    const insertBytesEstimated = insertRows * estimatedBytesPerRow;
+    const insertBytesScanned = insertBytesFromStats || insertBytesEstimated;
+    
+    addLog(`  🔍 Insert: ${insertRows} rows, ${insertBytesFromStats} bytes from stats, ${insertBytesEstimated} estimated, ${insertBytesScanned} final`);
+    
+    totalRowsProcessed += insertRows;
+    totalBytesScanned += insertBytesScanned;
 
     const executionTime = (Date.now() - startTime) / 1000;
     
     addLog(`✅ TRADITIONAL COMPLETED in ${executionTime}s - Required 5 separate operations`);
-    addLog(`📊 Traditional Results: ${totalRowsProcessed} total rows processed, ${(totalBytesScanned / 1024 / 1024).toFixed(2)} MB total scanned`);
+    addLog(`📊 Traditional Results: ${totalRowsProcessed} total rows processed, ${formatBytes(totalBytesScanned)} scanned`);
     
     return {
       testName: `Traditional Test (${dataScale})`,
@@ -379,13 +522,229 @@ const CustomerAnalytics = () => {
     }
   };
 
-  const resetTests = () => {
+  const checkDatabaseStatus = async () => {
+    try {
+      // Check if tables exist first
+      let profilesCount = 0;
+      let changesCount = 0;
+      
+      try {
+        const profilesResult = await executeFireboltQuery(`
+          SELECT COUNT(*) as count FROM customer_profiles;
+        `);
+        profilesCount = profilesResult.data?.[0]?.count || 0;
+      } catch (error) {
+        // Table doesn't exist, count is 0
+        profilesCount = 0;
+      }
+      
+      try {
+        const changesResult = await executeFireboltQuery(`
+          SELECT COUNT(*) as count FROM customer_changes;
+        `);
+        changesCount = changesResult.data?.[0]?.count || 0;
+      } catch (error) {
+        // Table doesn't exist, count is 0
+        changesCount = 0;
+      }
+      
+      setDatabaseStatus({
+        customerProfiles: profilesCount,
+        customerChanges: changesCount
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      addLog(`⚠️ Could not check database status: ${errorMessage}`);
+      setDatabaseStatus({ customerProfiles: 0, customerChanges: 0 });
+    }
+  };
+
+  const clearDatabaseStatus = () => {
+    setDatabaseStatus(null);
+    addLog(`🧹 Database status display cleared`);
+  };
+
+  const recreateTables = async () => {
+    if (isResettingDatabase) return;
+    
+    setIsResettingDatabase(true);
+    
+    try {
+      addLog(`🗑️ Dropping existing tables...`);
+      
+      // Drop tables if they exist
+      await executeFireboltQuery(`DROP TABLE IF EXISTS customer_changes;`);
+      await executeFireboltQuery(`DROP TABLE IF EXISTS customer_profiles;`);
+      
+      addLog(`🏗️ Creating customer_profiles table...`);
+      
+      // Create customer_profiles table
+      await executeFireboltQuery(`
+        CREATE FACT TABLE customer_profiles (
+          customer_id INT,
+          email TEXT,
+          full_name TEXT,
+          signup_date DATE,
+          subscription_tier TEXT,
+          monthly_spend DECIMAL(10,2),
+          last_activity_date TIMESTAMP,
+          status TEXT,
+          customer_segment TEXT,
+          created_at TIMESTAMP,
+          updated_at TIMESTAMP
+        ) PRIMARY INDEX customer_id;
+      `);
+      
+      addLog(`🏗️ Creating customer_changes table...`);
+      
+      // Create customer_changes table
+      await executeFireboltQuery(`
+        CREATE FACT TABLE customer_changes (
+          change_id INT,
+          customer_id INT,
+          email TEXT,
+          full_name TEXT,
+          signup_date DATE,
+          subscription_tier TEXT,
+          monthly_spend DECIMAL(10,2),
+          last_activity_date TIMESTAMP,
+          status TEXT,
+          change_source TEXT,
+          created_at TIMESTAMP
+        ) PRIMARY INDEX customer_id;
+      `);
+      
+      addLog(`✅ Tables recreated successfully`);
+      await checkDatabaseStatus();
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      addLog(`❌ Failed to recreate tables: ${errorMessage}`);
+    } finally {
+      setIsResettingDatabase(false);
+    }
+  };
+
+  const loadInitialSampleData = async () => {
+    if (isLoadingData) return;
+    
+    setIsLoadingData(true);
+    
+    try {
+      addLog(`📊 Loading initial sample data (10,000 customers)...`);
+      
+      // Check if tables exist, create them if they don't
+      try {
+        await executeFireboltQuery(`SELECT 1 FROM customer_profiles LIMIT 1;`);
+      } catch (error) {
+        addLog(`📋 Tables don't exist yet, creating them first...`);
+        
+        // Create tables first
+        setIsResettingDatabase(true);
+        try {
+          await executeFireboltQuery(`DROP TABLE IF EXISTS customer_changes;`);
+          await executeFireboltQuery(`DROP TABLE IF EXISTS customer_profiles;`);
+          
+          await executeFireboltQuery(`
+            CREATE FACT TABLE customer_profiles (
+              customer_id INT,
+              email TEXT,
+              full_name TEXT,
+              signup_date DATE,
+              subscription_tier TEXT,
+              monthly_spend DECIMAL(10,2),
+              last_activity_date TIMESTAMP,
+              status TEXT,
+              customer_segment TEXT,
+              created_at TIMESTAMP,
+              updated_at TIMESTAMP
+            ) PRIMARY INDEX customer_id;
+          `);
+          
+          await executeFireboltQuery(`
+            CREATE FACT TABLE customer_changes (
+              change_id INT,
+              customer_id INT,
+              email TEXT,
+              full_name TEXT,
+              signup_date DATE,
+              subscription_tier TEXT,
+              monthly_spend DECIMAL(10,2),
+              last_activity_date TIMESTAMP,
+              status TEXT,
+              change_source TEXT,
+              created_at TIMESTAMP
+            ) PRIMARY INDEX customer_id;
+          `);
+          
+          addLog(`✅ Tables created successfully`);
+        } finally {
+          setIsResettingDatabase(false);
+        }
+      }
+      
+      // Generate initial customer profiles
+      const batchSize = 1000;
+      const totalCustomers = 10000;
+      const batches = Math.ceil(totalCustomers / batchSize);
+      
+      for (let batch = 0; batch < batches; batch++) {
+        const batchStart = batch * batchSize + 1;
+        const batchEnd = Math.min((batch + 1) * batchSize, totalCustomers);
+        const batchCount = batchEnd - batchStart + 1;
+        
+        addLog(`  📦 Loading batch ${batch + 1}/${batches} (${batchCount} customers)...`);
+        
+        const values = [];
+        for (let i = 0; i < batchCount; i++) {
+          const custId = batchStart + i;
+          const spend = (custId % 500) + 10.0;
+          const tier = custId % 20 === 0 ? 'enterprise' : (custId % 10 === 0 ? 'premium' : 'basic');
+          const segment = custId % 20 === 0 ? 'high_value' : (spend >= 100 ? 'medium_value' : 'standard');
+          
+          // Use proper Firebolt date arithmetic
+          const daysAgo = custId % 365;
+          values.push(`(${custId}, 'customer${custId}@example.com', 'Customer ${custId}', DATE_ADD(DAY, -${daysAgo}, CURRENT_DATE()), '${tier}', ${spend}, CURRENT_TIMESTAMP(), 'active', '${segment}', CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())`);
+        }
+        
+        await executeFireboltQuery(`
+          INSERT INTO customer_profiles (
+            customer_id, email, full_name, signup_date, subscription_tier, 
+            monthly_spend, last_activity_date, status, customer_segment, created_at, updated_at
+          )
+          VALUES ${values.join(', ')};
+        `);
+      }
+      
+      addLog(`✅ Successfully loaded ${totalCustomers.toLocaleString()} initial customers`);
+      await checkDatabaseStatus();
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      addLog(`❌ Failed to load initial data: ${errorMessage}`);
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  const resetTestsOnly = () => {
     setTestResults([]);
     setComparison(null);
     setPerformanceMetrics([]);
     setLogs([]);
     setCurrentTest('');
   };
+
+  const fullDatabaseReset = async () => {
+    resetTestsOnly();
+    await recreateTables();
+    await loadInitialSampleData();
+  };
+
+  // Check database status on component load
+  useEffect(() => {
+    checkDatabaseStatus();
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
@@ -394,10 +753,132 @@ const CustomerAnalytics = () => {
         <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center">
           <Users className="w-8 h-8 text-firebolt-orange mr-3" />
           Customer Analytics MERGE Performance
+          <span className="ml-3 px-2 py-1 text-sm bg-firebolt-orange text-white rounded-full">v1.0</span>
         </h1>
         <p className="text-gray-600">
           Interactive performance comparison between MERGE and traditional INSERT/UPDATE approaches
         </p>
+      </div>
+
+      {/* Database Status */}
+      <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Database Status</h3>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={checkDatabaseStatus}
+              disabled={isResettingDatabase || isLoadingData}
+              className="flex items-center px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            >
+              <Database className="w-4 h-4 mr-1" />
+              Refresh
+            </button>
+            <button
+              onClick={clearDatabaseStatus}
+              disabled={isResettingDatabase || isLoadingData}
+              className="flex items-center px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+            >
+              <RotateCcw className="w-4 h-4 mr-1" />
+              Clear
+            </button>
+          </div>
+        </div>
+        
+        {databaseStatus ? (
+          <div>
+            {databaseStatus.customerProfiles === 0 && databaseStatus.customerChanges === 0 ? (
+              <div className="bg-yellow-50 rounded-lg p-4 mb-4">
+                <div className="flex items-center">
+                  <AlertCircle className="w-5 h-5 text-yellow-600 mr-2" />
+                  <div>
+                    <p className="text-sm font-medium text-yellow-900">Tables Not Found</p>
+                    <p className="text-xs text-yellow-700">Use "Recreate Tables" or "Full Reset" to set up the database</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <Database className="w-5 h-5 text-blue-600 mr-2" />
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">Customer Profiles</p>
+                      <p className="text-2xl font-bold text-blue-600">{databaseStatus.customerProfiles.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-green-50 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <Database className="w-5 h-5 text-green-600 mr-2" />
+                    <div>
+                      <p className="text-sm font-medium text-green-900">Customer Changes</p>
+                      <p className="text-2xl font-bold text-green-600">{databaseStatus.customerChanges.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-gray-50 rounded-lg p-4 mb-4">
+            <p className="text-gray-600">Checking database status...</p>
+          </div>
+        )}
+
+        {/* Database Reset Controls */}
+        <div className="border-t border-gray-200 pt-4">
+          <h4 className="text-sm font-semibold text-gray-700 mb-3">Database Management</h4>
+          <div className="flex items-center space-x-2 flex-wrap gap-2">
+            <button
+              onClick={resetTestsOnly}
+              disabled={isRunning || isResettingDatabase || isLoadingData}
+              className="flex items-center px-3 py-2 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RotateCcw className="w-4 h-4 mr-1" />
+              Reset UI Only
+            </button>
+            
+            <button
+              onClick={recreateTables}
+              disabled={isRunning || isResettingDatabase || isLoadingData}
+              className="flex items-center px-3 py-2 text-sm bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Database className="w-4 h-4 mr-1" />
+              Recreate Tables
+            </button>
+            
+            <button
+              onClick={loadInitialSampleData}
+              disabled={isRunning || isResettingDatabase || isLoadingData}
+              className="flex items-center px-3 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Database className="w-4 h-4 mr-1" />
+              Load Initial Data
+            </button>
+            
+            <button
+              onClick={fullDatabaseReset}
+              disabled={isRunning || isResettingDatabase || isLoadingData}
+              className="flex items-center px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Database className="w-4 h-4 mr-1" />
+              Full Reset
+            </button>
+            
+            <span className="text-xs text-gray-500 ml-2">
+              Full Reset = Recreate Tables + Load 10K Initial Customers
+            </span>
+          </div>
+        </div>
+        
+        {isResettingDatabase && (
+          <div className="mt-4 p-3 bg-orange-50 rounded-lg">
+            <div className="flex items-center">
+              <Database className="w-4 h-4 text-orange-600 mr-2 animate-pulse" />
+              <span className="text-sm font-medium text-orange-800">Resetting database...</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Test Controls */}
@@ -409,13 +890,16 @@ const CustomerAnalytics = () => {
               <label className="text-sm font-medium text-gray-700">Data Scale:</label>
               <select 
                 value={dataScale} 
-                onChange={(e) => setDataScale(e.target.value as '1x' | '3x' | '9x')}
+                onChange={(e) => setDataScale(e.target.value as '1x' | '3x' | '5x' | '10x' | '25x' | '50x')}
                 className="border border-gray-300 rounded px-3 py-1 text-sm"
                 disabled={isRunning}
               >
-                <option value="1x">1x (~200K customers)</option>
-                <option value="3x">3x (~600K customers)</option>
-                <option value="9x">9x (~1.8M customers)</option>
+                <option value="1x">1x (1,000 customers)</option>
+                <option value="3x">3x (3,000 customers)</option>
+                <option value="5x">5x (5,000 customers)</option>
+                <option value="10x">10x (10,000 customers)</option>
+                <option value="25x">25x (25,000 customers)</option>
+                <option value="50x">50x (50,000 customers)</option>
               </select>
             </div>
           </div>
@@ -435,14 +919,36 @@ const CustomerAnalytics = () => {
             {isRunning ? 'Running...' : 'Start Performance Test'}
           </button>
           
-          <button
-            onClick={resetTests}
-            disabled={isRunning}
-            className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <RotateCcw className="w-4 h-4 mr-2" />
-            Reset
-          </button>
+            <button
+              onClick={resetTestsOnly}
+              disabled={isRunning}
+              className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Reset
+            </button>
+          </div>
+        
+        {/* Data Loading Controls */}
+        <div className="border-t border-gray-200 pt-4">
+          <h4 className="text-sm font-semibold text-gray-700 mb-3">Load Additional Sample Data</h4>
+          <div className="flex items-center space-x-2 flex-wrap gap-2">
+            <span className="text-xs text-gray-600">Add to database:</span>
+            {[10000, 25000, 50000, 100000].map((count) => (
+              <button
+                key={count}
+                onClick={() => loadAdditionalData(count)}
+                disabled={isRunning || isLoadingData}
+                className="flex items-center px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Database className="w-3 h-3 mr-1" />
+                +{(count / 1000).toLocaleString()}K
+              </button>
+            ))}
+            <span className="text-xs text-gray-500 ml-2">
+              (Adds realistic customer data for performance testing)
+            </span>
+          </div>
         </div>
         
         {isRunning && currentTest && (
@@ -450,6 +956,15 @@ const CustomerAnalytics = () => {
             <div className="flex items-center">
               <Activity className="w-4 h-4 text-blue-600 mr-2 animate-spin" />
               <span className="text-sm font-medium text-blue-800">{currentTest}</span>
+            </div>
+          </div>
+        )}
+        
+        {isLoadingData && (
+          <div className="mt-4 p-3 bg-green-50 rounded-lg">
+            <div className="flex items-center">
+              <Database className="w-4 h-4 text-green-600 mr-2 animate-pulse" />
+              <span className="text-sm font-medium text-green-800">Loading additional sample data...</span>
             </div>
           </div>
         )}
@@ -802,7 +1317,7 @@ WHERE target.customer_id IS NULL;`}
                               {result.rowsProcessed.toLocaleString()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {(result.bytesScanned / 1024 / 1024).toFixed(2)} MB
+                              {formatBytes(result.bytesScanned)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {result.operationCount}
@@ -823,7 +1338,33 @@ WHERE target.customer_id IS NULL;`}
       {/* Test Logs */}
       {logs.length > 0 && (
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Test Execution Log</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Test Execution Log</h3>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  if (logs.length > 0) {
+                    setLogs(prev => prev.slice(0, -1));
+                  }
+                }}
+                disabled={logs.length === 0}
+                className="flex items-center px-3 py-1 text-sm bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50"
+              >
+                <RotateCcw className="w-4 h-4 mr-1" />
+                Remove Last
+              </button>
+              <button
+                onClick={() => {
+                  setLogs([]);
+                  addLog(`🧹 Execution logs cleared`);
+                }}
+                className="flex items-center px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600"
+              >
+                <RotateCcw className="w-4 h-4 mr-1" />
+                Clear All
+              </button>
+            </div>
+          </div>
           <div className="bg-gray-900 rounded-lg p-4 max-h-64 overflow-y-auto">
             <pre className="text-green-400 text-sm font-mono">
               {logs.map((log, index) => (

@@ -15,8 +15,11 @@ This demo application showcases the performance benefits of **Firebolt's MERGE o
 - **💻 Dual View Interface** - Toggle between Performance Results and SQL Query Comparison
 - **🔗 Real Firebolt Integration** - Direct connection to local Firebolt Core instance
 - **📈 Interactive Charts** - Execution time comparisons and performance metrics
-- **📝 Detailed Logging** - Step-by-step execution logs with timestamps
-- **⚖️ Scalable Testing** - Multiple data scales (1x, 3x, 9x) for comprehensive testing
+- **📝 Comprehensive Debugging** - Step-by-step execution logs with detailed operation statistics
+- **⚖️ Enhanced Data Controls** - 6 scaling options (1x to 50x = 1K to 50K customers)
+- **🛠️ Database Management** - Complete table recreation and data loading controls
+- **🧹 Smart Formatting** - Intelligent bytes/KB/MB display instead of 0.00 MB
+- **🔄 Transparent Testing** - Full visibility into database state for reproducible benchmarks
 
 ## 🏗️ Technical Stack
 
@@ -45,7 +48,7 @@ This demo application showcases the performance benefits of **Firebolt's MERGE o
 
 ### 1. Clone and Install
 ```bash
-git clone <repository-url>
+git clone https://github.com/johnkennedy-cmyk/firebolt-merge-demo.git
 cd firebolt-merge-demo
 npm install
 ```
@@ -58,11 +61,20 @@ npm run dev
 ### 3. Open Demo
 Navigate to `http://localhost:5173` and click on **Customer Analytics MERGE**
 
-### 4. Run Performance Tests
-1. Choose data scale (1x, 3x, or 9x)
+### 4. Initialize Database
+1. Click "Full Reset" to create tables and load 10K initial customers
+2. Optionally add more data (+10K, +25K, +50K, +100K buttons)
+
+### 5. Run Performance Tests
+1. Choose data scale (1x to 50x for 1K to 50K customers)
 2. Click "Start Performance Test"
-3. Watch real-time execution logs
-4. Toggle between Performance Results and SQL Query views
+3. Watch comprehensive execution logs with operation statistics
+4. Toggle between Performance Results and SQL Query Comparison views
+
+### 6. Database Management
+- **Database Status**: Monitor live table row counts
+- **Reset Options**: UI-only, recreate tables, load data, or full reset
+- **Clear Controls**: Remove log entries or clear status displays
 
 ## 🎛️ Available Scripts
 

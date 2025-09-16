@@ -63,7 +63,19 @@ cd firebolt-merge-demo
 npm install
 ```
 
-### 1.5. Verify CSS Setup (Recommended)
+### 1.5. Clear Vite Cache (Critical for CSS)
+
+```bash
+rm -rf .vite node_modules/.vite
+```
+
+**⚠️ CRITICAL**: This step prevents CSS rendering issues. Vite cache conflicts cause Tailwind CSS to fail, resulting in unstyled UI elements anchored to the left. 
+
+**Why this happens**: Although `.vite` files are in `.gitignore`, they may persist from previous development sessions or incomplete deletions. **Always run this command before starting the dev server.**
+
+**Note**: This issue should be resolved for future fresh clones as cache files are now properly excluded from the repository.
+
+### 1.6. Verify CSS Setup (Recommended)
 ```bash
 npm run setup-check
 ```
@@ -153,21 +165,32 @@ server: {
 
 ### CSS/UI Issues (Elements Anchored to Left)
 
-**✅ Auto-Prevention:** The `npm run dev` command now automatically clears Vite cache to prevent this issue.
+**⚠️ CRITICAL**: Always run this command manually before starting development:
+
+```bash
+rm -rf .vite node_modules/.vite
+```
+
+**✅ Auto-Prevention:** The `npm run dev` command automatically clears cache, but manual clearing ensures clean starts.
 
 If UI elements still appear unstyled or anchored to the left side of the screen:
 
-1. **Verify CSS Tools Installation:**
+1. **Manual Cache Clear (Most Effective Fix):**
+   ```bash
+   rm -rf .vite node_modules/.vite && npm run dev
+   ```
+
+2. **Verify CSS Tools Installation:**
    ```bash
    npm run setup-check
    ```
 
-2. **Force Cache Clear and Restart:**
+3. **Alternative: Use Built-in Cache Clear:**
    ```bash
    npm run dev:clean
    ```
 
-3. **Check Required Files Exist:**
+4. **Check Required Files Exist:**
    - `postcss.config.js` - PostCSS configuration
    - `tailwind.config.js` - Tailwind CSS configuration  
    - `src/index.css` - Contains `@tailwind` directives
@@ -179,7 +202,7 @@ If UI elements still appear unstyled or anchored to the left side of the screen:
    npm run dev
    ```
 
-**Root Cause:** This issue occurs when Tailwind CSS fails to process properly, usually due to Vite cache conflicts or missing PostCSS configuration.
+**Root Cause:** This issue occurs when Tailwind CSS fails to process properly due to Vite cache conflicts. Cache files are now properly excluded from the repository via `.gitignore`, so this should be rare for fresh installations.
 
 ## 📝 Version History
 

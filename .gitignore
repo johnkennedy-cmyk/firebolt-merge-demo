@@ -11,7 +11,16 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Vite cache (critical for CSS issues)
 .vite
+.cache
+
+# Additional build caches that can cause issues
+.turbo
+.parcel-cache
+.swc
+.rollup.cache
 
 # Editor directories and files
 .vscode/*

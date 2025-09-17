@@ -13,7 +13,7 @@ import type { ConnectionConfig } from '../types';
 const FireboltSetup = () => {
   const [connectionType, setConnectionType] = useState<'cloud' | 'core'>('core');
   const [config, setConfig] = useState<ConnectionConfig>({
-    database: 'ecommercedb',
+    database: '',
     username: 'firebolt',
     password: '',
     endpoint: 'localhost',
@@ -43,10 +43,10 @@ const FireboltSetup = () => {
       addLog(`Testing connection to ${config.endpoint}:${config.port}`);
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      addLog('Validating database credentials...');
+      addLog('Validating connection credentials...');
       await new Promise(resolve => setTimeout(resolve, 600));
       
-      addLog(`Connected to database: ${config.database}`, 'success');
+      addLog('Connection established successfully', 'success');
       await new Promise(resolve => setTimeout(resolve, 400));
       
       addLog('Verifying table schemas...', 'success');
@@ -99,32 +99,33 @@ const FireboltSetup = () => {
                 Firebolt Core
               </button>
               <button
-                onClick={() => setConnectionType('cloud')}
-                className={`flex items-center justify-center p-3 rounded-lg border-2 transition-colors ${
-                  connectionType === 'cloud'
-                    ? 'border-firebolt-blue bg-blue-50 text-firebolt-blue'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
+                disabled
+                className="flex items-center justify-center p-3 rounded-lg border-2 bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50"
+                title="Cloud connection not available in v1.0.0 - Local Core instances only"
               >
                 <Cloud className="w-5 h-5 mr-2" />
                 Firebolt Cloud
+                <span className="ml-2 text-xs bg-gray-300 text-gray-600 px-2 py-1 rounded-full">
+                  Disabled
+                </span>
               </button>
+            </div>
+            <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start">
+                <AlertCircle className="w-4 h-4 text-yellow-600 mr-2 mt-0.5 flex-shrink-0" />
+                <div className="text-sm">
+                  <p className="text-yellow-800 font-medium">v1.0.0 Scope Notice</p>
+                  <p className="text-yellow-700 mt-1">
+                    This release supports <strong>insecure connections to locally running Firebolt Core instances only</strong>. 
+                    Secure cloud connections may be available in future releases.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Configuration Form */}
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Database Name
-              </label>
-              <input
-                type="text"
-                value={config.database}
-                onChange={(e) => setConfig(prev => ({ ...prev, database: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-firebolt-blue"
-              />
-            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>

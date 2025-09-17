@@ -6,7 +6,7 @@ export const useMergeOperation = () => {
   const [results, setResults] = useState<MergeResult | null>(null);
   const [progress, setProgress] = useState(0);
 
-  const executeMerge = useCallback(async (data: any[]) => {
+  const executeMerge = useCallback(async (data: unknown[]) => {
     setIsExecuting(true);
     setProgress(0);
     setResults(null);

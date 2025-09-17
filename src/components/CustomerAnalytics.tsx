@@ -25,17 +25,15 @@ import {
   RotateCcw,
   TrendingUp,
   TrendingDown,
-  Clock,
   Database,
-  CheckCircle,
   AlertCircle,
   BarChart3,
   Zap,
   Target,
   Activity
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import type { MergeResult, PerformanceMetric } from '../types';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import type { PerformanceMetric } from '../types';
 
 interface TestResult {
   testName: string;
@@ -82,7 +80,7 @@ const CustomerAnalytics = () => {
     }
   }, []);
 
-  const executeFireboltQuery = async (query: string): Promise<any> => {
+  const executeFireboltQuery = useCallback(async (query: string): Promise<{ data?: Record<string, unknown>[], statistics?: { rows_read?: number, bytes_read?: number }, errors?: { description: string }[] }> => {
     try {
       addLog(`🔍 Executing query: ${query.substring(0, 100)}${query.length > 100 ? '...' : ''}`);
       
@@ -116,7 +114,7 @@ const CustomerAnalytics = () => {
       console.error('Query execution error:', error);
       throw error;
     }
-  };
+  }, [addLog]);
 
   const setupTestData = async (scale: '1x' | '3x' | '5x' | '10x' | '25x' | '50x') => {
     const getMultiplier = (scale: string): number => {
@@ -181,7 +179,7 @@ const CustomerAnalytics = () => {
         SELECT COALESCE(MAX(customer_id), 0) as max_id FROM customer_profiles;
       `);
       
-      const startId = (maxIdResult.data?.[0]?.max_id || 0) + 1;
+      const startId = ((maxIdResult.data?.[0] as { max_id?: number })?.max_id || 0) + 1;
       
       // Insert additional customer profiles in batches
       const batchSize = 1000;
@@ -221,7 +219,7 @@ const CustomerAnalytics = () => {
         SELECT COUNT(*) as total_customers FROM customer_profiles;
       `);
       
-      const totalCustomers = countResult.data?.[0]?.total_customers || 0;
+      const totalCustomers = (countResult.data?.[0] as { total_customers?: number })?.total_customers || 0;
       addLog(`✅ Successfully loaded ${customerCount.toLocaleString()} additional customers`);
       addLog(`📊 Database now contains ${totalCustomers.toLocaleString()} total customers`);
       await checkDatabaseStatus();
@@ -515,14 +513,14 @@ const CustomerAnalytics = () => {
       
     } catch (error) {
       console.error('Performance test failed:', error);
-      addLog(`❌ Test failed: ${error.message}`);
+      addLog(`❌ Test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setCurrentTest('');
     } finally {
       setIsRunning(false);
     }
   };
 
-  const checkDatabaseStatus = async () => {
+  const checkDatabaseStatus = useCallback(async () => {
     try {
       // Check if tables exist first
       let profilesCount = 0;
@@ -532,8 +530,8 @@ const CustomerAnalytics = () => {
         const profilesResult = await executeFireboltQuery(`
           SELECT COUNT(*) as count FROM customer_profiles;
         `);
-        profilesCount = profilesResult.data?.[0]?.count || 0;
-      } catch (error) {
+        profilesCount = (profilesResult.data?.[0] as { count?: number })?.count || 0;
+      } catch {
         // Table doesn't exist, count is 0
         profilesCount = 0;
       }
@@ -542,8 +540,8 @@ const CustomerAnalytics = () => {
         const changesResult = await executeFireboltQuery(`
           SELECT COUNT(*) as count FROM customer_changes;
         `);
-        changesCount = changesResult.data?.[0]?.count || 0;
-      } catch (error) {
+        changesCount = (changesResult.data?.[0] as { count?: number })?.count || 0;
+      } catch {
         // Table doesn't exist, count is 0
         changesCount = 0;
       }
@@ -557,7 +555,7 @@ const CustomerAnalytics = () => {
       addLog(`⚠️ Could not check database status: ${errorMessage}`);
       setDatabaseStatus({ customerProfiles: 0, customerChanges: 0 });
     }
-  };
+  }, [addLog, executeFireboltQuery]);
 
   const clearDatabaseStatus = () => {
     setDatabaseStatus(null);
@@ -636,7 +634,7 @@ const CustomerAnalytics = () => {
       // Check if tables exist, create them if they don't
       try {
         await executeFireboltQuery(`SELECT 1 FROM customer_profiles LIMIT 1;`);
-      } catch (error) {
+      } catch {
         addLog(`📋 Tables don't exist yet, creating them first...`);
         
         // Create tables first
@@ -744,7 +742,7 @@ const CustomerAnalytics = () => {
   // Check database status on component load
   useEffect(() => {
     checkDatabaseStatus();
-  }, []);
+  }, [checkDatabaseStatus]);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
@@ -1251,7 +1249,7 @@ WHERE target.customer_id IS NULL;`}
                       />
                       <YAxis label={{ value: 'Execution Time (seconds)', angle: -90, position: 'insideLeft' }} />
                       <Tooltip 
-                        formatter={(value, name, props) => [
+                        formatter={(value, _name, props) => [
                           `${value}s`, 
                           props.payload.operation === 'MERGE' ? 'MERGE Approach' : 'Traditional Approach'
                         ]}
@@ -1259,7 +1257,7 @@ WHERE target.customer_id IS NULL;`}
                       />
                       <Bar 
                         dataKey="executionTime" 
-                        fill={(entry) => entry?.operation === 'MERGE' ? '#FF6B35' : '#1E40AF'}
+                        fill="#FF6B35"
                         name="Execution Time"
                       />
                     </BarChart>

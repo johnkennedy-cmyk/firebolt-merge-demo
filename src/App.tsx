@@ -1,18 +1,23 @@
 /**
  * Firebolt MERGE Demo Application
- * Version: 1.0.0
+ * Version: 2.0.0
  * 
- * Interactive demonstration of Firebolt's MERGE operations performance
- * against traditional database approaches.
+ * Interactive demonstration of Firebolt's first-class MERGE support
+ * for mixed OLTP/OLAP workloads.
  * 
- * @version 1.0.0
+ * Features:
+ * - Attribution Updates: 50/50 insert/update workload pattern
+ * - Fraud Detection: MERGE DELETE for removing fraudulent records
+ * - Real-time Analytics: Sub-second queries on updating data
+ * 
+ * @version 2.0.0
  */
 
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navigation from './components/common/Navigation';
 import Dashboard from './components/Dashboard';
 import FireboltSetup from './components/FireboltSetup';
-import CustomerAnalytics from './components/CustomerAnalytics';
+import AdPerformanceDemo from './components/AdPerformanceDemo';
 
 function App() {
   return (
@@ -23,7 +28,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/setup" element={<FireboltSetup />} />
-            <Route path="/demo/customer-analytics" element={<CustomerAnalytics />} />
+            <Route path="/demo/ad-performance" element={<AdPerformanceDemo />} />
           </Routes>
         </main>
       </div>

@@ -1,220 +1,247 @@
 # Firebolt MERGE Demo
 
-> **Interactive demonstration of Firebolt's MERGE operations performance vs traditional database approaches**
+> **Interactive demonstration of Firebolt's first-class MERGE support for mixed OLTP/OLAP workloads**
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](./VERSION.md)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](./VERSION.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#)
 
-## ⚠️ **Important Security Notice**
+## 🎯 Overview
 
-**v1.0.0 Scope**: This release has been developed exclusively for **insecure connections to locally running Firebolt Core instances**. It connects to [Firebolt Core](https://www.firebolt.io/core) - the free, self-hosted analytical query engine that runs anywhere via Docker.
+This demo showcases how **Firebolt eliminates the OLTP vs OLAP trade-off** through first-class MERGE operations. Traditional databases force you to choose between fast analytics OR efficient updates — Firebolt delivers both.
 
-**Future Development**: Secure connection capabilities to Firebolt.io cloud services may be included in future releases.
+### The Challenge
 
-## 🚀 Overview
+Many real-world workloads are **50% inserts and 50% updates**:
+- Late-arriving attribution data (click today → conversion next week)
+- Fraud detection requiring immediate removal of bad data
+- Real-time analytics on continuously updating datasets
 
-This demo application showcases the performance benefits of **Firebolt's MERGE operations** compared to traditional INSERT/UPDATE/DELETE approaches through real-time testing against a local Firebolt Core instance.
+Previous solutions (PostgreSQL, ClickHouse, Snowflake) force impossible trade-offs. Firebolt's native MERGE support changes the game.
 
-### ✨ Key Features
+## ✨ Demo Features
 
-- **📊 Live Performance Testing** - Real-time comparison of MERGE vs Traditional approaches
-- **💻 Dual View Interface** - Toggle between Performance Results and SQL Query Comparison
-- **🔗 Real Firebolt Integration** - Direct connection to local Firebolt Core instance
-- **📈 Interactive Charts** - Execution time comparisons and performance metrics
-- **📝 Comprehensive Debugging** - Step-by-step execution logs with detailed operation statistics
-- **⚖️ Enhanced Data Controls** - 6 scaling options (1x to 50x = 1K to 50K customers)
-- **🛠️ Database Management** - Complete table recreation and data loading controls
-- **🧹 Smart Formatting** - Intelligent bytes/KB/MB display instead of 0.00 MB
-- **🔄 Transparent Testing** - Full visibility into database state for reproducible benchmarks
+### 1. Attribution Updates MERGE (50/50 Workload)
+```sql
+-- Single atomic operation handles both updates AND inserts
+MERGE INTO ad_performance AS target
+USING attribution_updates AS source
+ON target.click_id = source.click_id
+WHEN MATCHED AND source.conversion_value IS NOT NULL THEN
+    UPDATE SET conversion_value = source.conversion_value, ...
+WHEN NOT MATCHED THEN
+    INSERT (click_id, campaign_id, ...) VALUES (...);
+```
 
-## 🏗️ Technical Stack
+### 2. Fraud Detection MERGE (DELETE Pattern)
+```sql
+-- Remove fraudulent records atomically
+MERGE INTO ad_performance AS target
+USING detected_fraud AS source
+ON target.click_id = source.click_id
+WHEN MATCHED THEN DELETE;
+```
 
-- **Frontend**: React 19 + TypeScript + Tailwind CSS
-- **Build Tool**: Vite with HMR
-- **Charts**: Recharts for data visualizations
-- **Database**: Firebolt Core (localhost:3473)
-- **Data**: 5,000+ customer records for realistic testing
+### 3. Performance Comparison
+- Side-by-side comparison of MERGE vs Traditional multi-statement approaches
+- Real-time metrics: execution time, rows processed, bytes scanned
+- Visual demonstration of I/O reduction and simplification
 
-## 🎯 Demo Scenario
+## 🏗️ Architecture
 
-**Customer Analytics MERGE Performance**
-- Realistic e-commerce customer segmentation scenario
-- MERGE approach: Single comprehensive operation
-- Traditional approach: 5 separate DELETE/UPDATE/INSERT operations
-- Real-time performance metrics and SQL query comparison
-
-## 📋 Prerequisites
-
-- **[Firebolt Core](https://www.firebolt.io/core)** running locally on `localhost:3473`
-  ```bash
-  # Quick install via Docker
-  bash <(curl -s https://get-core.firebolt.io/)
-  ```
-- **Node.js** v16+ with npm
-- **Database** pre-populated with ecommerce dataset  
-- **Tables**: `customer_profiles`, `customer_changes`, `ecommerce`
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    React Frontend (Vite)                     │
+│                    http://localhost:5173                     │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ /api/*
+┌──────────────────────────▼──────────────────────────────────┐
+│                  Express API Server                          │
+│                  http://localhost:3001                       │
+│  • OAuth2 Authentication                                     │
+│  • Query Execution                                          │
+│  • Connection Management                                     │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ HTTPS
+┌──────────────────────────▼──────────────────────────────────┐
+│                    Firebolt Cloud                            │
+│  • Secure service account authentication                     │
+│  • First-class MERGE operations                              │
+│  • Sub-second query performance                              │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ## 🚀 Quick Start
 
+### Prerequisites
+
+- **Node.js** v18+
+- **Firebolt Cloud** account with service account credentials
+- **npm** or **yarn**
+
 ### 1. Clone and Install
+
 ```bash
-git clone https://github.com/johnkennedy-cmyk/firebolt-merge-demo.git
-cd firebolt-merge-demo
+git clone https://github.com/firebolt-db/merge-demo.git
+cd merge-demo/firebolt-merge-demo
+
+# Install frontend dependencies
 npm install
+
+# Install backend dependencies
+cd server && npm install && cd ..
 ```
 
-### 1.5. Clear Vite Cache (Critical for CSS)
+### 2. Configure Firebolt Credentials
+
+Create `server/.env` file with your credentials:
 
 ```bash
-rm -rf .vite node_modules/.vite
+cd server
+touch .env
 ```
 
-**⚠️ CRITICAL**: This step prevents CSS rendering issues. Vite cache conflicts cause Tailwind CSS to fail, resulting in unstyled UI elements anchored to the left. 
+Add the following (replace with your actual values):
 
-**Why this happens**: Although `.vite` files are in `.gitignore`, they may persist from previous development sessions or incomplete deletions. **Always run this command before starting the dev server.**
+```env
+# Firebolt Account Name
+FIREBOLT_ACCOUNT=your-account-name
 
-**Note**: This issue should be resolved for future fresh clones as cache files are now properly excluded from the repository.
+# Service Account Credentials (from Firebolt Console > Configure > Service Accounts)
+FIREBOLT_CLIENT_ID=your-service-account-client-id
+FIREBOLT_CLIENT_SECRET=your-service-account-client-secret
 
-### 1.6. Verify CSS Setup (Recommended)
+# Database and Engine
+FIREBOLT_DATABASE=your-database-name
+FIREBOLT_ENGINE=your-engine-name
+```
+
+> ⚠️ **Security Note:** The `.env` file is excluded from git via `.gitignore`. Never commit credentials to version control!
+
+### 3. Start the Servers
+
+**Terminal 1 - API Server:**
 ```bash
-npm run setup-check
+cd server
+npm start
 ```
-This ensures Tailwind CSS and PostCSS are properly configured to prevent UI layout issues.
 
-### 2. Start Development Server
+**Terminal 2 - Frontend:**
 ```bash
 npm run dev
 ```
-*Note: This automatically clears Vite cache to prevent CSS issues*
 
-### 3. Open Demo
-Navigate to `http://localhost:5173` and click on **Customer Analytics MERGE**
+### 4. Open the Demo
 
-### 4. Initialize Database
-1. Click "Full Reset" to create tables and load 10K initial customers
-2. Optionally add more data (+10K, +25K, +50K, +100K buttons)
+Navigate to `http://localhost:5173`
 
-### 5. Run Performance Tests
-1. Choose data scale (1x to 50x for 1K to 50K customers)
-2. Click "Start Performance Test"
-3. Watch comprehensive execution logs with operation statistics
-4. Toggle between Performance Results and SQL Query Comparison views
+### 5. Initialize Database
 
-### 6. Database Management
-- **Database Status**: Monitor live table row counts
-- **Reset Options**: UI-only, recreate tables, load data, or full reset
-- **Clear Controls**: Remove log entries or clear status displays
+1. Go to **Ad Performance MERGE** demo
+2. Click **Full Reset** to create tables and load sample data
+3. Run performance tests comparing MERGE vs Traditional approaches
+
+## 📊 Database Schema
+
+```sql
+-- Main fact table: Ad performance data
+CREATE FACT TABLE ad_performance (
+  click_id TEXT,
+  campaign_id INT,
+  ad_group_id INT,
+  keyword_id INT,
+  product_id TEXT,
+  click_time TIMESTAMP,
+  conversion_value DECIMAL(10,2),
+  attributed_at TIMESTAMP,
+  spend DECIMAL(10,2),
+  impressions INT,
+  clicks INT,
+  orders INT,
+  sales DECIMAL(10,2),
+  date DATE,
+  last_updated TIMESTAMP
+) PRIMARY INDEX click_id;
+
+-- Staging table: Late-arriving attribution data
+CREATE FACT TABLE attribution_updates (...) PRIMARY INDEX click_id;
+
+-- Fraud detection table
+CREATE FACT TABLE detected_fraud (...) PRIMARY INDEX click_id;
+```
 
 ## 🎛️ Available Scripts
 
-- `npm run dev` - Start development server (auto-clears cache)
-- `npm run dev:clean` - Explicitly clear cache and start server  
-- `npm run dev:direct` - Start server without cache clearing
+### Frontend
+- `npm run dev` - Start development server (port 5173)
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
-- `npm run setup-check` - Verify CSS tools are properly installed
 
-## 📊 What You'll See
+### Backend (in `server/` directory)
+- `npm start` - Start API server (port 3001)
+- `npm run dev` - Start with auto-reload
 
-### Performance Results View
-- **Metrics Cards**: Time improvement, efficiency gains, I/O reduction
-- **Execution Charts**: Visual comparison of MERGE vs Traditional timing
-- **Results Table**: Detailed breakdown of all performance metrics
-- **Real-time Logs**: Step-by-step execution with emoji indicators
+## 🏆 What You'll See
 
-### SQL Query Comparison View  
-- **Side-by-side SQL**: Actual MERGE vs Traditional queries
-- **Syntax Highlighting**: Color-coded for easy reading
-- **Educational Content**: Benefits comparison and technical insights
-- **Operation Breakdown**: See exactly what each approach executes
+### Performance Metrics
+| Metric | Description |
+|--------|-------------|
+| Time Improvement | % faster with MERGE vs Traditional |
+| Efficiency Gain | Reduction in rows processed |
+| I/O Reduction | Reduction in bytes scanned |
+| Simplification | N operations → 1 operation |
 
-## 🏆 Performance Benefits Demonstrated
+### SQL Comparison View
+- Side-by-side MERGE vs Traditional SQL
+- Syntax highlighting
+- Educational benefits breakdown
 
-- **🚀 Single Operation**: MERGE vs 5 traditional operations
-- **🔒 Atomic Transactions**: Better concurrency and data consistency  
-- **📉 Reduced I/O**: Lower resource consumption
-- **🧩 Simplified Logic**: Easier to understand and maintain
-- **⚡ Better Performance**: Measurable execution time improvements
+## 💡 Why First-Class MERGE Matters
 
-## 🎨 UI Features
+| Traditional Approach | Firebolt MERGE |
+|---------------------|----------------|
+| Multiple round trips | Single atomic operation |
+| Race conditions between ops | ACID compliant |
+| Complex transaction management | Single optimized query plan |
+| Multiple table scans | Single scan |
+| Inconsistent data windows | Immediate consistency |
 
-- **Responsive Design**: Works on desktop and mobile
-- **Firebolt Branding**: Orange and blue color scheme
-- **Interactive Elements**: Hover states and smooth transitions
-- **Loading States**: Progress indicators during test execution
-- **Error Handling**: Graceful error display and recovery
+## 🔧 Technical Stack
 
-## 🔧 Configuration
-
-The app connects to Firebolt Core via a Vite proxy configured in `vite.config.ts`:
-
-```typescript
-server: {
-  proxy: {
-    '/api/firebolt': {
-      target: 'http://localhost:3473',
-      changeOrigin: true,
-      rewrite: (path) => path.replace(/^\/api\/firebolt/, ''),
-    }
-  }
-}
-```
-
-## 🔧 Troubleshooting
-
-### CSS/UI Issues (Elements Anchored to Left)
-
-**⚠️ CRITICAL**: Always run this command manually before starting development:
-
-```bash
-rm -rf .vite node_modules/.vite
-```
-
-**✅ Auto-Prevention:** The `npm run dev` command automatically clears cache, but manual clearing ensures clean starts.
-
-If UI elements still appear unstyled or anchored to the left side of the screen:
-
-1. **Manual Cache Clear (Most Effective Fix):**
-   ```bash
-   rm -rf .vite node_modules/.vite && npm run dev
-   ```
-
-2. **Verify CSS Tools Installation:**
-   ```bash
-   npm run setup-check
-   ```
-
-3. **Alternative: Use Built-in Cache Clear:**
-   ```bash
-   npm run dev:clean
-   ```
-
-4. **Check Required Files Exist:**
-   - `postcss.config.js` - PostCSS configuration
-   - `tailwind.config.js` - Tailwind CSS configuration  
-   - `src/index.css` - Contains `@tailwind` directives
-
-4. **Nuclear Option - Full Reinstall:**
-   ```bash
-   rm -rf node_modules package-lock.json .vite
-   npm install
-   npm run dev
-   ```
-
-**Root Cause:** This issue occurs when Tailwind CSS fails to process properly due to Vite cache conflicts. Cache files are now properly excluded from the repository via `.gitignore`, so this should be rare for fresh installations.
+| Component | Technology |
+|-----------|------------|
+| Frontend | React 19 + TypeScript + Vite |
+| Styling | Tailwind CSS |
+| Charts | Recharts |
+| Backend | Express.js |
+| Database | Firebolt Cloud |
+| Auth | OAuth2 (Service Account) |
 
 ## 📝 Version History
 
-See [VERSION.md](./VERSION.md) for detailed release notes.
+### v2.0.0 - Firebolt Cloud Edition
+- ✅ Firebolt Cloud connection support
+- ✅ Attribution Updates MERGE (50/50 workload)
+- ✅ Fraud Detection MERGE DELETE pattern
+- ✅ Backend API server for secure authentication
+- ✅ Redesigned UI
+
+### v1.0.0 - Firebolt Core Edition
+- Initial release with Firebolt Core (localhost) support
+- Customer segmentation MERGE demo
+
+## 🔗 Learn More
+
+- **[Implementing Firebolt MERGE Statement](https://www.firebolt.io/blog/implementing-firebolt-merge-statement)** - Technical deep dive
+- **[Firebolt Documentation](https://docs.firebolt.io/)** - Full MERGE syntax reference
+- **[Start Free Trial](https://firebolt.io/signup)** - Get $200 in credits
 
 ## 🤝 Contributing
 
-This is a demonstration project. For production use cases, consider:
-- Adding authentication for multi-user environments
-- Implementing data export capabilities
-- Adding more complex MERGE scenarios
-- Extending to other Firebolt features
+Contributions welcome! Ideas for enhancement:
+- Additional MERGE patterns (CDC, SCD Type 2)
+- ShadowTraffic integration for realistic data generation
+- Benchmark automation and reporting
 
 ## 📄 License
 
@@ -222,4 +249,4 @@ MIT License - See LICENSE file for details.
 
 ---
 
-**Built with ❤️ to showcase Firebolt's MERGE capabilities**
+**Built with 🔥 by Firebolt to demonstrate first-class MERGE capabilities**

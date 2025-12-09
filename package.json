@@ -1,8 +1,8 @@
 {
   "name": "firebolt-merge-demo",
   "private": true,
-  "version": "1.0.0",
-  "description": "Interactive demonstration of Firebolt's MERGE operations performance vs traditional database approaches",
+  "version": "2.0.0",
+  "description": "Interactive demo showcasing Firebolt's first-class MERGE support for mixed OLTP/OLAP workloads",
   "type": "module",
   "scripts": {
     "dev": "npm run dev:clean",

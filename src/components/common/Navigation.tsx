@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Database, Home, Settings, Users } from 'lucide-react';
+import { Database, Home, Settings, Target } from 'lucide-react';
 
 const Navigation = () => {
   const location = useLocation();
@@ -7,7 +7,7 @@ const Navigation = () => {
   const navItems = [
     { path: '/', label: 'Dashboard', icon: Home },
     { path: '/setup', label: 'Setup', icon: Settings },
-    { path: '/demo/customer-analytics', label: 'Customer Analytics', icon: Users },
+    { path: '/demo/ad-performance', label: 'Ad Performance MERGE', icon: Target },
   ];
 
   return (
@@ -18,6 +18,9 @@ const Navigation = () => {
             <Database className="w-8 h-8 text-firebolt-red mr-3" />
             <span className="text-2xl font-bold text-firebolt-dark">
               Firebolt <span className="text-firebolt-red">MERGE</span> <span className="text-firebolt-gray">Demo</span>
+            </span>
+            <span className="ml-3 px-2 py-0.5 text-xs bg-gradient-to-r from-firebolt-red to-orange-500 text-white rounded-full">
+              v2.0
             </span>
           </div>
           

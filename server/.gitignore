@@ -1,0 +1,17 @@
+# ⚠️ NEVER COMMIT CREDENTIALS
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+
+# Dependencies
+node_modules
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+

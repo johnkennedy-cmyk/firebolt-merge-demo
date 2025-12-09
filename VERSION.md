@@ -1,108 +1,115 @@
 # Firebolt MERGE Demo - Version History
 
-## Version 1.0.0 (2025-09-16) 🎉
+## Version 2.0.0 - Firebolt Cloud Edition (2025-12-09) 🔥
 
-### Complete MERGE Performance Demo with Enhanced Database Management
+### Complete AdTech MERGE Demo with Cloud Support
 
-**🎯 Core Demo Features:**
-- ✅ **MERGE vs Traditional Performance**: Real-time comparison showing execution time, rows processed, and bytes scanned
-- ✅ **Dual View Interface**: Toggle between Performance Results and SQL Query Comparison
-- ✅ **Smart Bytes Formatting**: Displays bytes/KB/MB intelligently instead of always showing 0.00 MB
-- ✅ **Comprehensive Debugging**: Step-by-step logs with detailed operation statistics
-- ✅ **Real SQL Query Comparison**: Side-by-side view of MERGE vs 5 traditional operations
+This release transforms the demo into an **AdTech application** showcasing Firebolt's first-class MERGE support for mixed OLTP/OLAP workloads.
 
-**📊 Enhanced Data Controls:**
-- ✅ **6 Data Scaling Options**: 1x to 50x (1,000 to 50,000 customers)
-- ✅ **Additional Data Loading**: +10K, +25K, +50K, +100K buttons for scaling tests
-- ✅ **Database Status Monitoring**: Live row counts for customer_profiles and customer_changes tables
-- ✅ **Transparent Testing**: Complete visibility into database state for reproducible benchmarks
+**🎯 Demo Scenario: Ad Performance Tracking**
+- Handles the "oil and water" challenge: 50% inserts, 50% updates
+- Late-arriving attribution data merged atomically
+- Fraud detection with MERGE DELETE
+- Sub-second analytics on continuously updating data
 
-**🛠️ Advanced Database Management:**
-- ✅ **Database Status Dashboard**: Real-time monitoring with refresh and clear options
-- ✅ **Four Reset Levels**: 
-  - Reset UI Only (clear test results and logs)
-  - Recreate Tables (drop and recreate with proper Firebolt schemas)
-  - Load Initial Data (10,000 sample customers)
-  - Full Reset (complete database recreation + initial data)
-- ✅ **Intelligent Table Creation**: Auto-creates tables when loading data if they don't exist
-- ✅ **Robust Error Handling**: Graceful handling of missing tables and SQL errors
+**✨ Key Features:**
 
-**🧹 User Experience Enhancements:**
-- ✅ **Clear Database Status**: Reset status display to neutral state
-- ✅ **Remove Last Log Entry**: Granular control over execution logs
-- ✅ **Clear All Logs**: Fresh start for log display
-- ✅ **Smart Disabling**: Buttons disable appropriately during operations
-- ✅ **Visual Feedback**: Loading indicators and status messages
+**1. Attribution Updates MERGE (50/50 Workload)**
+- ✅ Single atomic operation handles both UPDATE and INSERT
+- ✅ Simulates late-arriving conversion data
+- ✅ Comparison with traditional 3-operation approach
 
-**🔥 Firebolt Alignment:**
-- ✅ **Proper Firebolt Syntax**: Aligned with [official MERGE blog post](https://www.firebolt.io/blog/implementing-firebolt-merge-statement)
-- ✅ **FACT TABLE Creation**: Uses `CREATE FACT TABLE` with `PRIMARY INDEX`
-- ✅ **Correct Data Types**: TEXT columns and proper DECIMAL usage
-- ✅ **Firebolt Functions**: `DATE_ADD(DAY, -N, CURRENT_DATE())` and `CURRENT_TIMESTAMP()`
-- ✅ **Distributed Operations**: Leverages Firebolt's scalable join and DML operations
+**2. Fraud Detection MERGE DELETE**
+- ✅ Remove fraudulent records atomically with MERGE...WHEN MATCHED THEN DELETE
+- ✅ Comparison with traditional SELECT → DELETE pattern
 
-**🏗️ Technical Architecture:**
-- ✅ **React + TypeScript**: Modern frontend with comprehensive type safety
-- ✅ **Tailwind CSS**: Responsive design with Firebolt brand colors and PostCSS config
-- ✅ **Vite Development**: Fast development server with HMR
-- ✅ **Recharts Integration**: Professional charts and visualizations
-- ✅ **Direct Firebolt Integration**: Connects to localhost:3473 via proxy
+**3. Firebolt Cloud Integration**
+- ✅ Backend API server for OAuth2 authentication
+- ✅ Secure service account credential handling
+- ✅ Real-time connection status monitoring
 
-**📈 Performance Metrics Demonstrated:**
-- 🚀 **Time Improvement**: Percentage faster execution with MERGE
-- 🚀 **Efficiency Gain**: Reduction in rows processed
-- 🚀 **I/O Reduction**: Lower bytes scanned
-- 🚀 **Simplification Factor**: 1 operation vs 5 traditional operations
-- 🚀 **Scalable Testing**: Performance comparison across different data volumes
-
-**🔧 Database Schema:**
+**📊 Database Schema:**
 ```sql
-CREATE FACT TABLE customer_profiles (
-  customer_id INT,
-  email TEXT,
-  full_name TEXT,
-  signup_date DATE,
-  subscription_tier TEXT,
-  monthly_spend DECIMAL(10,2),
-  last_activity_date TIMESTAMP,
-  status TEXT,
-  customer_segment TEXT,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
-) PRIMARY INDEX customer_id;
+-- Main fact table
+CREATE FACT TABLE ad_performance (
+  click_id TEXT,
+  campaign_id INT,
+  ad_group_id INT,
+  keyword_id INT,
+  product_id TEXT,
+  click_time TIMESTAMP,
+  conversion_value DECIMAL(10,2),
+  attributed_at TIMESTAMP,
+  spend DECIMAL(10,2),
+  impressions INT,
+  clicks INT,
+  orders INT,
+  sales DECIMAL(10,2),
+  date DATE,
+  last_updated TIMESTAMP
+) PRIMARY INDEX click_id;
 
-CREATE FACT TABLE customer_changes (
-  change_id INT,
-  customer_id INT,
-  email TEXT,
-  full_name TEXT,
-  signup_date DATE,
-  subscription_tier TEXT,
-  monthly_spend DECIMAL(10,2),
-  last_activity_date TIMESTAMP,
-  status TEXT,
-  change_source TEXT,
-  created_at TIMESTAMP
-) PRIMARY INDEX customer_id;
+-- Attribution updates staging
+CREATE FACT TABLE attribution_updates (...) PRIMARY INDEX click_id;
+
+-- Fraud detection
+CREATE FACT TABLE detected_fraud (...) PRIMARY INDEX click_id;
 ```
+
+**🏗️ Technical Changes:**
+- ✅ New `AdPerformanceDemo.tsx` component with full MERGE implementation
+- ✅ Express.js backend server for Firebolt Cloud authentication
+- ✅ Updated types for AdTech domain
+- ✅ New navigation and dashboard
+- ✅ Updated Vite config for API proxying
+
+**📝 Files Changed:**
+- `src/components/AdPerformanceDemo.tsx` - New main demo component
+- `src/components/Dashboard.tsx` - Redesigned dashboard
+- `src/components/common/Navigation.tsx` - Updated routes
+- `src/components/FireboltSetup.tsx` - Firebolt Cloud support
+- `src/types/index.ts` - AdTech type definitions
+- `src/App.tsx` - New route structure
+- `server/index.js` - Backend API server
+- `server/package.json` - Server dependencies
+- `vite.config.ts` - API proxy configuration
+- `README.md` - Complete documentation rewrite
 
 ---
 
-### 🚀 Quick Start Guide:
+## Version 1.0.0 (2024-09-16) 
 
-1. **Start Firebolt Core**: Ensure running on localhost:3473
-2. **Install & Run**: `npm install && npm run dev`
-3. **Initialize Database**: Click "Full Reset" to create tables and load initial data
-4. **Run Performance Tests**: Compare MERGE vs Traditional approaches
-5. **Explore Results**: Toggle between Performance Results and SQL Query views
-6. **Scale Testing**: Add more data and test at different scales
+### Original Customer Analytics Demo
 
-### 🎯 What Makes This v1.0 Special:
+**🎯 Core Demo Features:**
+- ✅ Customer Analytics MERGE performance comparison
+- ✅ Firebolt Core (localhost) connection
+- ✅ MERGE vs 5 traditional operations
 
-This release provides a **complete, transparent, and production-ready** demonstration of Firebolt's MERGE capabilities. It's perfect for:
-- **Customer presentations** showing real performance gains
-- **Technical demos** with full visibility into the testing process  
-- **Educational use** understanding MERGE vs traditional approaches
-- **Benchmarking** across different data volumes with consistent conditions
+**Note:** This version has been superseded by v2.0.0.
 
-**Built with precision, tested thoroughly, and designed for impact.** 🔥
+---
+
+### 🚀 Quick Start (v2.0.0):
+
+1. **Install dependencies:**
+   ```bash
+   npm install
+   cd server && npm install
+   ```
+
+2. **Configure Firebolt Cloud credentials:**
+   Create `server/.env` with your service account details
+
+3. **Start servers:**
+   ```bash
+   # Terminal 1: API Server
+   cd server && npm start
+   
+   # Terminal 2: Frontend
+   npm run dev
+   ```
+
+4. **Open demo:** http://localhost:5173
+
+**Built with 🔥 by Firebolt**

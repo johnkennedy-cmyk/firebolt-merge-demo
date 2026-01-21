@@ -1,0 +1,41 @@
+# ============================================================================
+# Cursor Ignore - Firebolt MERGE Demo
+# ============================================================================
+# Prevents Cursor AI from reading sensitive files in this project
+
+# =========================
+# Credentials & Secrets
+# =========================
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Server credentials
+server/.env
+server/.env.*
+
+# =========================
+# Private Keys
+# =========================
+*.pem
+*.key
+*.secret
+
+# =========================
+# Credential Files
+# =========================
+credentials.json
+secrets.json
+service-account.json
+service-account-*.json
+*.credentials
+config.local.json
+
+# =========================
+# Firebolt Specific
+# =========================
+firebolt-credentials*
+firebolt-config.local*
